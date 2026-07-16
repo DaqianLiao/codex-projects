@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>三年级英语 · 单词消消乐</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --c1:#FF6B6B;--c2:#4ECDC4;--c3:#FFE66D;--c4:#A8E6CF;
+  --c5:#FF8B94;--c6:#95E1D3;--c7:#F38181;--c8:#AA96DA;
+  --c9:#FCBAD3;--c10:#B5EAD7;--c11:#FFDAC1;--c12:#C7CEEA;
+  --bg:#FFF5EE;--card-bg:#FFFFFF;--shadow:0 4px 20px rgba(0,0,0,0.08);
+  --radius:16px;--font:'Comic Sans MS','Chalkboard SE','Noto Sans SC',sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);min-height:100vh;overflow-x:hidden;}
+
+/* ─── Header ─── */
+.header{
+  background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  padding:20px 16px 16px;text-align:center;position:relative;
+  box-shadow:0 4px 20px rgba(102,126,234,0.3);
+}
+.header h1{color:#fff;font-size:24px;font-weight:700;letter-spacing:1px;}
+.header h1 span{display:inline-block;animation:bounce 2s infinite;}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.header .sub{color:rgba(255,255,255,0.85);font-size:13px;margin-top:4px;}
+
+/* ─── Pages ─── */
+.page{display:none;padding:16px;max-width:600px;margin:0 auto;}
+.page.active{display:block;}
+.page-enter{animation:pageIn 0.3s ease;}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── Unit Selection ─── */
+.units{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;padding-bottom:24px;}
+.unit-card{
+  background:#fff;border-radius:var(--radius);padding:16px 12px;
+  box-shadow:var(--shadow);cursor:pointer;transition:all 0.2s;
+  text-align:center;border:3px solid transparent;
+  position:relative;overflow:hidden;
+}
+.unit-card:active{transform:scale(0.96);}
+.unit-card .icon{font-size:32px;margin-bottom:6px;}
+.unit-card .name{font-size:14px;font-weight:700;color:#333;}
+.unit-card .desc{font-size:11px;color:#999;margin-top:3px;}
+.unit-card:hover{border-color:#667eea;transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,0.12);}
+
+/* ─── Game Screen ─── */
+.game-info{
+  display:flex;justify-content:space-between;align-items:center;
+  background:#fff;border-radius:var(--radius);padding:12px 16px;
+  box-shadow:var(--shadow);margin-bottom:12px;
+}
+.game-info .stat{text-align:center;}
+.game-info .stat .num{font-size:20px;font-weight:700;color:#333;}
+.game-info .stat .label{font-size:11px;color:#999;}
+.game-info .stat.highlight .num{color:#667eea;}
+
+.game-header{
+  display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;
+}
+.game-header .back-btn{
+  background:none;border:none;color:#667eea;font-size:14px;font-weight:600;
+  cursor:pointer;padding:6px 10px;border-radius:8px;transition:background 0.2s;
+}
+.game-header .back-btn:hover{background:rgba(102,126,234,0.1);}
+.game-header .title{font-size:15px;font-weight:700;color:#333;}
+
+/* ─── Game Grid ─── */
+.game-grid{
+  display:grid;gap:8px;margin:0 auto;max-width:480px;
+  perspective:1000px;
+}
+.card{
+  aspect-ratio:1;background:linear-gradient(145deg,#667eea,#764ba2);
+  border-radius:12px;cursor:pointer;transition:all 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:15px;color:#fff;text-align:center;
+  padding:6px;position:relative;transform-style:preserve-3d;
+  box-shadow:0 3px 10px rgba(102,126,234,0.25);
+  user-select:none;-webkit-tap-highlight-color:transparent;
+}
+.card:active:not(.matched):not(.flipped){transform:scale(0.92);}
+.card .card-text{position:relative;z-index:2;text-shadow:0 1px 3px rgba(0,0,0,0.2);line-height:1.3;}
+.card .card-bg-icon{position:absolute;font-size:48px;opacity:0.15;top:50%;left:50%;transform:translate(-50%,-50%);}
+
+/* English word cards */
+.card.type-en{background:linear-gradient(145deg,#667eea,#5a6fd6);}
+/* Chinese meaning cards */
+.card.type-zh{background:linear-gradient(145deg,#f093fb,#f5576c);}
+
+/* Flipped state */
+.card.flipped{transform:rotateY(360deg);}
+.card.flipped.type-en{background:linear-gradient(145deg,#7c9aff,#667eea);box-shadow:0 3px 16px rgba(102,126,234,0.4);}
+.card.flipped.type-zh{background:linear-gradient(145deg,#ff8a9e,#f5576c);box-shadow:0 3px 16px rgba(245,87,108,0.4);}
+
+/* Matched - eliminated */
+.card.matched{
+  animation:eliminate 0.6s ease forwards;
+  pointer-events:none;
+}
+@keyframes eliminate{
+  0%{transform:scale(1);opacity:1;}
+  30%{transform:scale(1.15);opacity:0.9;}
+  60%{transform:scale(1.2);opacity:0.6;}
+  100%{transform:scale(0);opacity:0;}
+}
+
+/* Wrong match shake */
+.card.wrong{animation:shake 0.4s ease;}
+@keyframes shake{
+  0%,100%{transform:translateX(0);}
+  20%{transform:translateX(-8px);}
+  40%{transform:translateX(8px);}
+  60%{transform:translateX(-6px);}
+  80%{transform:translateX(6px);}
+}
+
+/* ─── Particle Effects ─── */
+.particle-container{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1000;}
+.particle{
+  position:absolute;border-radius:50%;animation:particleFly 0.8s ease-out forwards;
+}
+@keyframes particleFly{
+  0%{transform:translate(0,0) scale(1);opacity:1;}
+  100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0;}
+}
+
+/* ─── Combo Popup ─── */
+.combo-popup{
+  position:fixed;top:40%;left:50%;transform:translate(-50%,-50%) scale(0);
+  z-index:100;font-size:48px;font-weight:800;color:#f5576c;
+  text-shadow:0 3px 10px rgba(245,87,108,0.3);
+  pointer-events:none;animation:comboPop 1s ease forwards;
+}
+@keyframes comboPop{
+  0%{transform:translate(-50%,-50%) scale(0);opacity:0;}
+  30%{transform:translate(-50%,-50%) scale(1.3);opacity:1;}
+  60%{transform:translate(-50%,-50%) scale(1);opacity:1;}
+  100%{transform:translate(-50%,-100%) scale(1);opacity:0;}
+}
+
+/* ─── Result Overlay ─── */
+.result-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
+  z-index:200;align-items:center;justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.result-overlay.active{display:flex;}
+.result-box{
+  background:#fff;border-radius:24px;padding:32px 28px;max-width:340px;width:90%;
+  text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.2);
+  animation:popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+@keyframes popIn{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
+.result-box .emoji{font-size:56px;margin-bottom:8px;}
+.result-box h2{font-size:22px;color:#333;margin-bottom:4px;}
+.result-box .stars{font-size:28px;margin:8px 0;}
+.result-box .detail{font-size:14px;color:#666;margin-bottom:12px;line-height:1.6;}
+.result-box .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+.btn{
+  padding:10px 24px;border:none;border-radius:12px;font-size:15px;font-weight:700;
+  cursor:pointer;transition:all 0.2s;font-family:var(--font);
+}
+.btn:active{transform:scale(0.95);}
+.btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;box-shadow:0 4px 12px rgba(102,126,234,0.3);}
+.btn-primary:hover{box-shadow:0 6px 20px rgba(102,126,234,0.4);}
+.btn-secondary{background:#f0f0f0;color:#666;}
+.btn-secondary:hover{background:#e0e0e0;}
+
+/* ─── Responsive ─── */
+@media(min-width:500px){
+  .card{font-size:17px;border-radius:14px;}
+  .game-grid{gap:10px;max-width:500px;}
+  .units{grid-template-columns:repeat(3,1fr);}
+}
+
+@media(max-width:380px){
+  .card{font-size:13px;border-radius:10px;padding:4px;}
+  .game-grid{gap:5px;}
+  .header h1{font-size:20px;}
+}
+
+/* ─── Floating stars decoration ─── */
+.bg-deco{position:fixed;inset:0;pointer-events:none;z-index:-1;overflow:hidden;}
+.bg-deco span{
+  position:absolute;font-size:20px;opacity:0.08;animation:float 8s infinite;
+}
+@keyframes float{
+  0%,100%{transform:translateY(0) rotate(0deg);}
+  50%{transform:translateY(-20px) rotate(10deg);}
+}
+
+/* ─── Progress bar ─── */
+.progress-wrap{
+  background:#e8e8e8;border-radius:8px;height:6px;overflow:hidden;margin:8px 0;
+}
+.progress-bar{
+  height:100%;border-radius:8px;background:linear-gradient(90deg,#667eea,#f5576c);
+  transition:width 0.4s ease;width:0%;
+}
+</style>
+</head>
+<body>
+
+<div class="bg-deco" id="bgDeco"></div>
+<div class="particle-container" id="particleContainer"></div>
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-box" id="resultBox">
+    <div class="emoji" id="resultEmoji">🎉</div>
+    <h2 id="resultTitle">太棒了！</h2>
+    <div class="stars" id="resultStars">⭐⭐⭐</div>
+    <div class="detail" id="resultDetail"></div>
+    <div class="btns">
+      <button class="btn btn-primary" onclick="replayUnit()">再玩一次</button>
+      <button class="btn btn-secondary" onclick="backToMenu()">返回首页</button>
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <h1><span>📚</span> 单词消消乐</h1>
+  <div class="sub">三年级深圳牛津英语 · 上册</div>
+</div>
+
+<!-- Unit Selection Page -->
+<div class="page active" id="pageMenu">
+  <div class="units" id="unitGrid"></div>
+</div>
+
+<!-- Game Page -->
+<div class="page" id="pageGame">
+  <div class="game-header">
+    <button class="back-btn" onclick="backToMenu()">← 返回</button>
+    <span class="title" id="gameTitle">选择单元</span>
+    <button class="back-btn" onclick="resetGame()">🔄</button>
+  </div>
+  <div class="game-info">
+    <div class="stat"><div class="num" id="statScore">0</div><div class="label">得分</div></div>
+    <div class="stat highlight"><div class="num" id="statCombo">0</div><div class="label">连击</div></div>
+    <div class="stat"><div class="num" id="statPairs">0/0</div><div class="label">配对</div></div>
+    <div class="stat"><div class="num" id="statTime">00</div><div class="label">用时(s)</div></div>
+  </div>
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="game-grid" id="gameGrid"></div>
+</div>
+
+<script>
+// ─── Vocabulary Data ───
+const UNITS = [
+  {
+    id:1, name:'👋 打招呼', desc:'Unit 1 Hello!',
+    words:[
+      {en:'hello',zh:'你好'},{en:'hi',zh:'嗨'},{en:'good',zh:'好的'},
+      {en:'morning',zh:'早上'},{en:'afternoon',zh:'下午'},{en:'evening',zh:'傍晚'},
+      {en:'night',zh:'晚上'},{en:'I',zh:'我'}
+    ]
+  },
+  {
+    id:2, name:'😊 问候', desc:'Unit 2 How are you?',
+    words:[
+      {en:'fine',zh:'好的'},{en:'thank',zh:'谢谢'},{en:'how',zh:'怎么'},
+      {en:'are',zh:'是'},{en:'you',zh:'你'},{en:'OK',zh:'好的'},
+      {en:'and',zh:'和,又'}
+    ]
+  },
+  {
+    id:3, name:'👨‍👩‍👧 家人', desc:'Unit 3 My family',
+    words:[
+      {en:'father',zh:'父亲'},{en:'mother',zh:'母亲'},{en:'brother',zh:'兄弟'},
+      {en:'sister',zh:'姐妹'},{en:'grandpa',zh:'爷爷'},{en:'grandma',zh:'奶奶'},
+      {en:'me',zh:'我'},{en:'family',zh:'家庭'}
+    ]
+  },
+  {
+    id:4, name:'👫 朋友', desc:'Unit 4 My friends',
+    words:[
+      {en:'friend',zh:'朋友'},{en:'tall',zh:'高的'},{en:'short',zh:'矮的'},
+      {en:'thin',zh:'瘦的'},{en:'fat',zh:'胖的'},{en:'big',zh:'大的'},
+      {en:'small',zh:'小的'},{en:'pretty',zh:'漂亮的'}
+    ]
+  },
+  {
+    id:5, name:'🦷 身体', desc:'Unit 5 My body',
+    words:[
+      {en:'nose',zh:'鼻子'},{en:'mouth',zh:'嘴巴'},{en:'eye',zh:'眼睛'},
+      {en:'ear',zh:'耳朵'},{en:'face',zh:'脸'},{en:'head',zh:'头'},
+      {en:'hair',zh:'头发'},{en:'hand',zh:'手'}
+    ]
+  },
+  {
+    id:6, name:'🐾 动物', desc:'Unit 6 Animals',
+    words:[
+      {en:'cat',zh:'猫'},{en:'dog',zh:'狗'},{en:'bird',zh:'鸟'},
+      {en:'fish',zh:'鱼'},{en:'rabbit',zh:'兔子'},{en:'monkey',zh:'猴子'},
+      {en:'tiger',zh:'老虎'},{en:'panda',zh:'熊猫'}
+    ]
+  },
+  {
+    id:7, name:'🍎 水果', desc:'Unit 7 Fruit',
+    words:[
+      {en:'apple',zh:'苹果'},{en:'orange',zh:'橙子'},{en:'banana',zh:'香蕉'},
+      {en:'pear',zh:'梨'},{en:'grape',zh:'葡萄'},{en:'mango',zh:'芒果'},
+      {en:'peach',zh:'桃子'},{en:'watermelon',zh:'西瓜'}
+    ]
+  },
+  {
+    id:8, name:'🧸 玩具', desc:'Unit 8 Fun things',
+    words:[
+      {en:'ball',zh:'球'},{en:'doll',zh:'娃娃'},{en:'kite',zh:'风筝'},
+      {en:'robot',zh:'机器人'},{en:'toy',zh:'玩具'},{en:'top',zh:'陀螺'},
+      {en:'bike',zh:'自行车'},{en:'yo-yo',zh:'悠悠球'}
+    ]
+  }
+];
+
+// ─── Game State ───
+let state = { unitId:null, cards:[], selected:[], matched:0, totalPairs:0,
+  score:0, combo:0, maxCombo:0, time:0, timerId:null, isPlaying:false, locked:false,
+  attempts:0, correctAttempts:0 };
+
+// ─── Initialize ───
+function init(){
+  renderUnits();
+  renderBgDeco();
+}
+
+function renderBgDeco(){
+  const bg = document.getElementById('bgDeco');
+  const icons = ['★','☆','✨','♥','♠','♦','♣'];
+  for(let i=0;i<18;i++){
+    const span = document.createElement('span');
+    span.textContent = icons[i%icons.length];
+    span.style.left = Math.random()*90+5+'%';
+    span.style.top = Math.random()*90+5+'%';
+    span.style.animationDuration = (6+Math.random()*8)+'s';
+    span.style.animationDelay = (Math.random()*5)+'s';
+    span.style.fontSize = (14+Math.random()*16)+'px';
+    bg.appendChild(span);
+  }
+}
+
+function renderUnits(){
+  const grid = document.getElementById('unitGrid');
+  grid.innerHTML = '';
+  const unitIcons = ['👋','😊','👨‍👩‍👧','👫','🦷','🐾','🍎','🧸'];
+  UNITS.forEach((unit,i)=>{
+    const card = document.createElement('div');
+    card.className = 'unit-card page-enter';
+    card.innerHTML = `
+      <div class="icon">${unitIcons[i]||'📖'}</div>
+      <div class="name">${unit.name}</div>
+      <div class="desc">${unit.desc} · ${unit.words.length}对</div>
+    `;
+    card.onclick = ()=>startUnit(unit.id);
+    card.style.animationDelay = (i*0.05)+'s';
+    grid.appendChild(card);
+  });
+}
+
+// ─── Start a Unit ───
+function startUnit(unitId){
+  const unit = UNITS.find(u=>u.id===unitId);
+  if(!unit) return;
+
+  // Reset state
+  clearInterval(state.timerId);
+  state = { unitId, cards:[], selected:[], matched:0, totalPairs:unit.words.length,
+    score:0, combo:0, maxCombo:0, time:0, timerId:null, isPlaying:false,
+    locked:false, attempts:0, correctAttempts:0 };
+
+  // Build shuffled cards
+  const pairs = [...unit.words];
+  // Shuffle pairs
+  for(let i=pairs.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [pairs[i],pairs[j]]=[pairs[j],pairs[i]];
+  }
+
+  // Pick pairs - use all, but max 10 for grid space
+  const usedPairs = pairs.slice(0, Math.min(pairs.length, 10));
+  state.totalPairs = usedPairs.length;
+
+  usedPairs.forEach((p,i)=>{
+    state.cards.push({ id:`en-${i}`, pairId:i, type:'en', text:p.en, matched:false });
+    state.cards.push({ id:`zh-${i}`, pairId:i, type:'zh', text:p.zh, matched:false });
+  });
+
+  // Shuffle cards
+  for(let i=state.cards.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [state.cards[i],state.cards[j]]=[state.cards[j],state.cards[i]];
+  }
+
+  // Update title
+  document.getElementById('gameTitle').textContent = unit.name.replace(/^[^\s]+\s/,'');
+
+  // Show game page
+  showPage('pageGame');
+  renderGrid();
+  updateStats();
+
+  // Start timer after a short delay
+  setTimeout(()=>{
+    if(!state.timerId){
+      state.isPlaying=true;
+      state.timerId = setInterval(()=>{
+        state.time++;
+        document.getElementById('statTime').textContent = state.time;
+      },1000);
+    }
+  },500);
+}
+
+// ─── Render Grid ───
+function renderGrid(){
+  const grid = document.getElementById('gameGrid');
+  grid.innerHTML = '';
+  const total = state.cards.length;
+  const cols = total <= 12 ? 4 : (total <= 16 ? 4 : 5);
+  grid.style.gridTemplateColumns = `repeat(${cols},1fr)`;
+
+  state.cards.forEach((card,i)=>{
+    const el = document.createElement('div');
+    el.className = `card type-${card.type}`;
+    el.dataset.index = i;
+    el.id = `card-${i}`;
+
+    // Show text
+    const text = document.createElement('span');
+    text.className = 'card-text';
+    text.textContent = card.text;
+    el.appendChild(text);
+
+    // Background icon for visual flair
+    const icon = document.createElement('span');
+    icon.className = 'card-bg-icon';
+    icon.textContent = card.type==='en' ? 'A' : '中';
+    el.appendChild(icon);
+
+    el.onclick = ()=>onCardClick(i);
+    grid.appendChild(el);
+
+    // Staggered entry animation
+    el.style.opacity = '0';
+    el.style.transform = 'scale(0.8)';
+    requestAnimationFrame(()=>{
+      setTimeout(()=>{
+        el.style.transition = 'all 0.3s cubic-bezier(0.175,0.885,0.32,1.275)';
+        el.style.opacity = '1';
+        el.style.transform = 'scale(1)';
+      }, i * 40);
+    });
+  });
+}
+
+// ─── Card Click ───
+function onCardClick(index){
+  if(state.locked) return;
+  const card = state.cards[index];
+  if(card.matched) return;
+  if(state.selected.includes(index)) return;
+  if(state.selected.length >= 2) return;
+
+  // Select card
+  state.selected.push(index);
+  const el = document.getElementById(`card-${index}`);
+  el.classList.add('flipped');
+
+  if(state.selected.length === 2){
+    state.locked = true;
+    state.attempts++;
+    checkMatch();
+  }
+}
+
+function checkMatch(){
+  const [i1,i2] = state.selected;
+  const c1 = state.cards[i1];
+  const c2 = state.cards[i2];
+
+  // Must be one EN and one ZH, and same pairId
+  if(c1.type !== c2.type && c1.pairId === c2.pairId){
+    // Correct match!
+    state.correctAttempts++;
+    state.combo++;
+    state.matched++;
+    state.maxCombo = Math.max(state.maxCombo, state.combo);
+
+    // Score: base 100 + combo bonus
+    const bonus = Math.min(state.combo, 10) * 20;
+    state.score += 100 + bonus;
+
+    // Mark as matched
+    c1.matched = true;
+    c2.matched = true;
+
+    const el1 = document.getElementById(`card-${i1}`);
+    const el2 = document.getElementById(`card-${i2}`);
+
+    // Particle effects
+    createParticles(el1);
+    createParticles(el2);
+
+    // Eliminate animation
+    setTimeout(()=>{
+      el1.classList.add('matched');
+      el2.classList.add('matched');
+    },100);
+
+    // Show combo popup for streaks
+    if(state.combo >= 2){
+      showComboPopup(state.combo);
+    }
+
+    updateStats();
+
+    setTimeout(()=>{
+      state.selected = [];
+      state.locked = false;
+
+      // Check win
+      if(state.matched >= state.totalPairs){
+        clearInterval(state.timerId);
+        state.isPlaying = false;
+        setTimeout(showResult,500);
+      }
+    },700);
+  } else {
+    // Wrong match
+    state.combo = 0;
+    updateStats();
+
+    const el1 = document.getElementById(`card-${i1}`);
+    const el2 = document.getElementById(`card-${i2}`);
+
+    setTimeout(()=>{
+      el1.classList.add('wrong');
+      el2.classList.add('wrong');
+    },100);
+
+    setTimeout(()=>{
+      el1.classList.remove('flipped','wrong');
+      el2.classList.remove('flipped','wrong');
+      state.selected = [];
+      state.locked = false;
+    },800);
+  }
+}
+
+// ─── Particle Effects ───
+function createParticles(el){
+  const rect = el.getBoundingClientRect();
+  const cx = rect.left + rect.width/2;
+  const cy = rect.top + rect.height/2;
+  const container = document.getElementById('particleContainer');
+
+  const colors = ['#FF6B6B','#4ECDC4','#FFE66D','#A8E6CF','#FF8B94',
+    '#95E1D3','#F38181','#AA96DA','#FCBAD3','#667eea','#f5576c'];
+
+  const emojis = ['⭐','✨','🌟','💫','🎉','🎊','❤️','💜','💛','💚'];
+
+  for(let i=0;i<14;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 40 + Math.random() * 80;
+    const size = 6 + Math.random() * 12;
+    p.style.cssText = `
+      left:${cx}px;top:${cy}px;
+      width:${size}px;height:${size}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      --dx:${Math.cos(angle)*dist}px;
+      --dy:${Math.sin(angle)*dist}px;
+      border-radius:${Math.random()>0.5?'50%':'2px'};
+    `;
+    // Use emoji for some particles
+    if(Math.random()>0.6){
+      p.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+      p.style.background = 'transparent';
+      p.style.fontSize = size*1.5+'px';
+      p.style.width = 'auto';
+      p.style.height = 'auto';
+    }
+    container.appendChild(p);
+    setTimeout(()=>p.remove(),900);
+  }
+}
+
+function showComboPopup(combo){
+  const el = document.createElement('div');
+  el.className = 'combo-popup';
+  const msgs = ['','','连击 ×2! 🔥','连击 ×3! 🔥🔥','连击 ×4! 💥','连击 ×5! 💥💥','连击 ×6! 🌟'];
+  el.textContent = combo <= 6 ? msgs[combo] : `连击 ×${combo}! 🌟`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1200);
+}
+
+// ─── Update Stats ───
+function updateStats(){
+  document.getElementById('statScore').textContent = state.score;
+  document.getElementById('statCombo').textContent = state.combo;
+  document.getElementById('statPairs').textContent = `${state.matched}/${state.totalPairs}`;
+  const progress = state.totalPairs > 0 ? (state.matched/state.totalPairs*100) : 0;
+  document.getElementById('progressBar').style.width = progress+'%';
+}
+
+// ─── Result ───
+function showResult(){
+  const overlay = document.getElementById('resultOverlay');
+  const emoji = document.getElementById('resultEmoji');
+  const title = document.getElementById('resultTitle');
+  const stars = document.getElementById('resultStars');
+  const detail = document.getElementById('resultDetail');
+
+  const accuracy = state.attempts > 0
+    ? Math.round(state.correctAttempts/state.attempts*100) : 0;
+
+  // Calculate stars
+  let starCount = 1;
+  if(accuracy >= 90 && state.time < 60) starCount = 3;
+  else if(accuracy >= 70 || state.time < 90) starCount = 2;
+
+  if(starCount === 3){
+    emoji.textContent = '🏆';
+    title.textContent = '完美通关！';
+  } else if(starCount === 2){
+    emoji.textContent = '🎉';
+    title.textContent = '真棒！';
+  } else {
+    emoji.textContent = '👏';
+    title.textContent = '继续加油！';
+  }
+
+  stars.textContent = '⭐'.repeat(starCount) + '☆'.repeat(3-starCount);
+  detail.innerHTML = `
+    得分: <b>${state.score}</b> 分 · 用时: <b>${state.time}</b> 秒<br>
+    配对: <b>${state.matched}/${state.totalPairs}</b> · 准确率: <b>${accuracy}%</b><br>
+    最高连击: <b>${state.maxCombo}</b> 🔥
+  `;
+  overlay.classList.add('active');
+}
+
+function replayUnit(){
+  document.getElementById('resultOverlay').classList.remove('active');
+  startUnit(state.unitId);
+}
+
+function backToMenu(){
+  clearInterval(state.timerId);
+  state.isPlaying = false;
+  document.getElementById('resultOverlay').classList.remove('active');
+  showPage('pageMenu');
+}
+
+function resetGame(){
+  if(state.unitId) startUnit(state.unitId);
+}
+
+// ─── Page Navigation ───
+function showPage(pageId){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+}
+
+// ─── Start ───
+init();
+</script>
+</body>
+</html>

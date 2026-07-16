@@ -1,0 +1,23 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Agent config (machine-specific)
+.agents/
+.codex/
+
+# Node dependencies
+node_modules/
+
+# Render outputs
+remotion-demo/out/
+*.mp4
+
+# Snapshots (generated)
+**/snapshots/
+
+# Backup files
+*副本*
+
+# Temp files
+*.tmp
