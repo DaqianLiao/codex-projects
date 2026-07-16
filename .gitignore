@@ -21,3 +21,6 @@ remotion-demo/out/
 
 # Temp files
 *.tmp
+
+# Auto-sync script
+auto-sync.sh
